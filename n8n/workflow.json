@@ -1,0 +1,256 @@
+{
+  "name": "AI Recruitment Automation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-candidate",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - New Candidate",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/submit",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "name", "value": "={{$json.body.name}}"},
+            {"name": "email", "value": "={{$json.body.email}}"},
+            {"name": "phone", "value": "={{$json.body.phone}}"},
+            {"name": "city", "value": "={{$json.body.city}}"},
+            {"name": "college", "value": "={{$json.body.college}}"},
+            {"name": "role_applied", "value": "={{$json.body.role_applied}}"}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-submit",
+      "name": "Submit to FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "shortlisted"
+            }
+          ]
+        }
+      },
+      "id": "if-shortlisted",
+      "name": "IF Shortlisted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.GMAIL_SENDER_EMAIL}}",
+        "toEmail": "={{$node['Submit to FastAPI'].json.email}}",
+        "subject": "Interview Invitation — {{$node['Submit to FastAPI'].json.role_applied}} Position",
+        "emailType": "html",
+        "message": "<h2>Congratulations!</h2><p>Your application for <strong>{{$node['Submit to FastAPI'].json.role_applied}}</strong> has been shortlisted.</p><p>Our HR team will contact you with interview details.</p>"
+      },
+      "id": "gmail-shortlist",
+      "name": "Gmail - Shortlist Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1000, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/notify/{{$node['Submit to FastAPI'].json.candidate_id}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-notify-whatsapp",
+      "name": "Trigger WhatsApp Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1000, 350]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "value": "={{$env.GOOGLE_SHEET_ID}}"
+        },
+        "sheetName": "Sheet1",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate ID": "={{$node['Submit to FastAPI'].json.candidate_id}}",
+            "Name": "={{$json.body.name}}",
+            "Email": "={{$json.body.email}}",
+            "Role": "={{$json.body.role_applied}}",
+            "Score": "={{$node['Submit to FastAPI'].json.match_score}}",
+            "Status": "shortlisted"
+          }
+        }
+      },
+      "id": "sheets-shortlisted",
+      "name": "Google Sheets - Shortlisted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1250, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.GMAIL_SENDER_EMAIL}}",
+        "toEmail": "={{$node['Submit to FastAPI'].json.email}}",
+        "subject": "Your Application — {{$node['Submit to FastAPI'].json.role_applied}}",
+        "emailType": "text",
+        "message": "Dear Candidate,\n\nThank you for your interest. After careful review, we have decided to move forward with other candidates.\n\nWe encourage you to apply again in the future.\n\nBest regards,\nHR Team"
+      },
+      "id": "gmail-rejection",
+      "name": "Gmail - Rejection Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1000, 500],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "value": "={{$env.GOOGLE_SHEET_ID}}"
+        },
+        "sheetName": "Sheet1",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate ID": "={{$node['Submit to FastAPI'].json.candidate_id}}",
+            "Name": "={{$json.body.name}}",
+            "Email": "={{$json.body.email}}",
+            "Role": "={{$json.body.role_applied}}",
+            "Score": "={{$node['Submit to FastAPI'].json.match_score}}",
+            "Status": "rejected"
+          }
+        }
+      },
+      "id": "sheets-rejected",
+      "name": "Google Sheets - Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1250, 500],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "workflow_status",
+              "value": "completed"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now.toISO()}}"
+            },
+            {
+              "name": "candidate_id",
+              "value": "={{$node['Submit to FastAPI'].json.candidate_id}}"
+            }
+          ]
+        }
+      },
+      "id": "set-log",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - New Candidate": {
+      "main": [
+        [{"node": "Submit to FastAPI", "type": "main", "index": 0}]
+      ]
+    },
+    "Submit to FastAPI": {
+      "main": [
+        [{"node": "IF Shortlisted?", "type": "main", "index": 0}]
+      ]
+    },
+    "IF Shortlisted?": {
+      "main": [
+        [
+          {"node": "Gmail - Shortlist Email", "type": "main", "index": 0},
+          {"node": "Trigger WhatsApp Notification", "type": "main", "index": 0}
+        ],
+        [
+          {"node": "Gmail - Rejection Email", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Gmail - Shortlist Email": {
+      "main": [
+        [{"node": "Google Sheets - Shortlisted", "type": "main", "index": 0}]
+      ]
+    },
+    "Google Sheets - Shortlisted": {
+      "main": [
+        [{"node": "Log Completion", "type": "main", "index": 0}]
+      ]
+    },
+    "Gmail - Rejection Email": {
+      "main": [
+        [{"node": "Google Sheets - Rejected", "type": "main", "index": 0}]
+      ]
+    },
+    "Google Sheets - Rejected": {
+      "main": [
+        [{"node": "Log Completion", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "error-workflow",
+    "timezone": "Asia/Kolkata"
+  },
+  "staticData": null,
+  "tags": [
+    {"name": "recruitment"},
+    {"name": "automation"}
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

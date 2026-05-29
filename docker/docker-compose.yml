@@ -1,0 +1,91 @@
+version: '3.9'
+
+services:
+  # FastAPI Backend
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: ../.env
+    depends_on:
+      - redis
+    volumes:
+      - ../uploads:/app/uploads
+    environment:
+      - PYTHONPATH=/app/backend
+      - REDIS_URL=redis://redis:6379/0
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # Streamlit Candidate Portal
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8501:8501"
+    env_file: ../.env
+    depends_on:
+      - api
+    environment:
+      - API_BASE_URL=http://api:8000
+    command: streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+    restart: unless-stopped
+
+  # Streamlit Recruiter Dashboard
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8502:8502"
+    env_file: ../.env
+    depends_on:
+      - api
+    environment:
+      - API_BASE_URL=http://api:8000
+    command: streamlit run frontend/dashboard.py --server.port 8502 --server.address 0.0.0.0
+    restart: unless-stopped
+
+  # Redis (message broker for Celery)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Celery Worker (async task processing)
+  celery_worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file: ../.env
+    depends_on:
+      - redis
+      - api
+    environment:
+      - PYTHONPATH=/app/backend
+      - REDIS_URL=redis://redis:6379/0
+    command: celery -A tasks.celery_tasks worker --loglevel=info
+    restart: unless-stopped
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  n8n_data:

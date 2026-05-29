@@ -1,0 +1,67 @@
+# ==============================================================================
+# AI Recruitment Automation — Role-Based Filtering Configuration
+# ==============================================================================
+# Defines filtering criteria for each role. Used by services/filter.py.
+#
+# For each role:
+#   required_skills    — candidate MUST have ALL of these to be shortlisted
+#   preferred_skills   — nice-to-have, improve candidate ranking
+#   min_experience_years — minimum years of experience required
+#   min_match_score    — minimum AI match score (0-100) for shortlisting
+#   education_required — if true, candidate must have a relevant degree
+#   job_description    — brief JD text sent to Groq for scoring
+# ==============================================================================
+
+roles:
+  backend_developer:
+    required_skills: [Python, SQL, REST API]
+    preferred_skills: [Docker, FastAPI, PostgreSQL, Redis, Git, Linux]
+    min_experience_years: 1.5
+    min_match_score: 65
+    education_required: false
+    job_description: >
+      We are looking for a Backend Developer proficient in Python with experience
+      building REST APIs using FastAPI or Django. The candidate should be comfortable
+      with SQL databases (PostgreSQL preferred), Docker containerization, and Git
+      version control. Experience with Redis, Celery, and microservices architecture
+      is a plus. Minimum 1.5 years of professional experience required.
+
+  data_scientist:
+    required_skills: [Python, Machine Learning, pandas]
+    preferred_skills: [TensorFlow, PyTorch, SQL, scikit-learn, NumPy, Data Visualization]
+    min_experience_years: 1.0
+    min_match_score: 60
+    education_required: true
+    job_description: >
+      We are hiring a Data Scientist with strong Python skills and hands-on experience
+      in Machine Learning. Proficiency with pandas, NumPy, and scikit-learn is required.
+      Experience with deep learning frameworks (TensorFlow/PyTorch), SQL databases,
+      and data visualization tools is preferred. A degree in Computer Science,
+      Statistics, Mathematics, or related field is required.
+
+  frontend_developer:
+    required_skills: [JavaScript, React]
+    preferred_skills: [TypeScript, Node.js, CSS, Next.js, HTML, Git]
+    min_experience_years: 1.0
+    min_match_score: 60
+    education_required: false
+    job_description: >
+      We are looking for a Frontend Developer with strong JavaScript and React skills.
+      The candidate should be able to build responsive, performant web applications.
+      Experience with TypeScript, Next.js, modern CSS frameworks, and Node.js is
+      preferred. Familiarity with Git, testing frameworks (Jest/Cypress), and CI/CD
+      pipelines is a plus. Minimum 1 year of professional experience required.
+
+  devops_engineer:
+    required_skills: [Docker, Linux, Git]
+    preferred_skills: [Kubernetes, AWS, CI/CD, Terraform, Ansible, Prometheus]
+    min_experience_years: 2.0
+    min_match_score: 70
+    education_required: false
+    job_description: >
+      We are hiring a DevOps Engineer with expertise in Docker, Linux system
+      administration, and Git-based workflows. The candidate should have experience
+      with container orchestration (Kubernetes), cloud platforms (AWS/GCP/Azure),
+      CI/CD pipelines (GitHub Actions, Jenkins), and infrastructure-as-code
+      (Terraform/Ansible). Monitoring experience with Prometheus/Grafana is a plus.
+      Minimum 2 years of professional experience required.
